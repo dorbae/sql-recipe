@@ -152,3 +152,123 @@ VALUES
       , amount - COALESCE(coupon, 0) as discount_amount2
    FROM purchase_log_with_coupon
 ;
+
+/**
+ * 6.1. concat string
+ */
+--DROP TABLE IF EXISTS mst_user_location;
+CREATE TABLE mst_user_location (
+    user_id   varchar(255)
+  , pref_name varchar(255)
+  , city_name varchar(255)
+);
+
+INSERT INTO mst_user_location
+VALUES
+    ('U001', '서울특별시', '강서구')
+  , ('U002', '경기도수원시', '장안구'  )
+  , ('U003', '제주특별자치도', '서귀포시')
+;
+
+SELECT user_id
+     , CONCAT(pref_name, ' ', city_name) AS city1
+     , pref_name || ' ' || city_name AS city2
+  FROM mst_user_location
+;
+
+/**
+ * 6.2. compare columns
+ */
+--DROP TABLE IF EXISTS quarterly_sales;
+CREATE TABLE quarterly_sales (
+    year integer
+  , q1   integer
+  , q2   integer
+  , q3   integer
+  , q4   integer
+);
+
+INSERT INTO quarterly_sales
+VALUES
+    (2015, 82000, 83000, 78000, 83000)
+  , (2016, 85000, 85000, 80000, 81000)
+  , (2017, 92000, 81000, NULL , NULL )
+;
+
+SELECT year
+     , q1
+     , q2
+     , CASE
+	     WHEN q1 < q2 THEN '+'
+	     WHEN q1 = q2 THEN ' '
+         ELSE '-'
+       END AS judge_q1_q2
+     , q2 - q1 AS diff_q1_q2
+     , SIGN(q2 - q1) AS sign_q2_q1
+  FROM quarterly_sales
+ ORDER BY year
+;
+
+/**
+ * 6.3. greatest/least
+ */
+SELECT year
+     , greatest(q1, q2, q3, q4) AS greatest_sales
+     , least(q1, q2, q3, q4) AS least_sales
+  FROM quarterly_sales
+ ORDER BY year
+;
+
+/**
+ * 6.4. average
+ */
+SELECT year
+     , (COALESCE(q1, 0) + COALESCE(q2, 0) + COALESCE(q3, 0) + COALESCE(q4, 0)) / 
+     (SIGN(COALESCE(q1, 0)) + SIGN(COALESCE(q2, 0)) + SIGN(COALESCE(q3, 0)) + SIGN(COALESCE(q4, 0)))
+     AS average
+  FROM quarterly_sales
+ ORDER BY year
+;
+
+/**
+ * 6.7. divide integers
+ */
+--DROP TABLE IF EXISTS advertising_stats;
+CREATE TABLE advertising_stats (
+    dt          varchar(255)
+  , ad_id       varchar(255)
+  , impressions integer
+  , clicks      integer
+);
+
+INSERT INTO advertising_stats
+VALUES
+    ('2017-04-01', '001', 100000,  3000)
+  , ('2017-04-01', '002', 120000,  1200)
+  , ('2017-04-01', '003', 500000, 10000)
+  , ('2017-04-02', '001',      0,     0)
+  , ('2017-04-02', '002', 130000,  1400)
+  , ('2017-04-02', '003', 620000, 15000)
+;
+
+SELECT dt
+     , ad_id
+     , CAST(clicks AS double precision) / CAST(impressions AS double precision) AS ctr
+     , 100.0 * CAST(clicks AS double precision) / CAST(impressions AS double precision) as ctr_as_percentage 
+  FROM advertising_stats
+ WHERE dt = '2017-04-01'
+ ORDER BY dt, ad_id
+;
+
+/**
+ * 6.8. avoid dividing zero
+ */
+SELECT dt
+     , ad_id
+     , CASE
+     	WHEN impressions > 0 THEN 100.0 * CAST(clicks AS double precision) / CAST(impressions AS double precision)
+       END AS ctr_by_case
+     , 100.0 * CAST(clicks AS double precision) / CAST(NULLIF(impressions, 0) AS double precision) AS ctr_by_nullif
+  FROM advertising_stats
+ ORDER BY dt, ad_id
+;
