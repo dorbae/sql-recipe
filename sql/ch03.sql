@@ -272,3 +272,166 @@ SELECT dt
   FROM advertising_stats
  ORDER BY dt, ad_id
 ;
+
+/*
+ * 6.9. calculate the distance in 1-dim
+ */
+
+--DROP TABLE IF EXISTS location_1d;
+CREATE TABLE location_1d (
+    x1 integer
+  , x2 integer
+);
+
+INSERT INTO location_1d
+VALUES
+    ( 5 , 10)
+  , (10 ,  5)
+  , (-2 ,  4)
+  , ( 3 ,  3)
+  , ( 0 ,  1)
+;
+
+--DROP TABLE IF EXISTS location_2d;
+CREATE TABLE location_2d (
+    x1 integer
+  , y1 integer
+  , x2 integer
+  , y2 integer
+);
+
+INSERT INTO location_2d
+VALUES
+    (0, 0, 2, 2)
+  , (3, 5, 1, 2)
+  , (5, 3, 2, 1)
+;
+
+SELECT ABS(x2 - x1) AS abs
+     , SQRT(POWER(x2 - x1, 2)) AS sqrt
+  FROM location_1d
+;
+
+/**
+ * 6.10. calculate the distance in 2-dim
+ */
+SELECT SQRT(POWER(x2 - x1, 2) + POWER(y2 - y1, 2)) AS distance
+     -- utilze point data type in PostgreSQL
+     , POINT(x1, y1) <-> POINT(x2, y2) AS distance_by_points
+  FROM location_2d
+;
+
+
+/**
+ * 6.11. handle date/time
+ */
+--DROP TABLE IF EXISTS mst_users_with_dates;
+CREATE TABLE mst_users_with_dates (
+    user_id        varchar(255)
+  , register_stamp varchar(255)
+  , birth_date     varchar(255)
+);
+
+INSERT INTO mst_users_with_dates
+VALUES
+    ('U001', '2016-02-28 10:00:00', '2000-02-29')
+  , ('U002', '2016-02-29 10:00:00', '2000-02-29')
+  , ('U003', '2016-03-01 10:00:00', '2000-02-29')
+;
+
+SELECT user_id
+     , register_stamp::timestamp AS resister_ts
+     , register_stamp::timestamp + '1 hour'::interval AS after_1h
+     , register_stamp::timestamp - '30 minutes'::interval AS before_30m
+     , register_stamp::date AS resister_dt
+     , (register_stamp::date + '1 day'::interval)::date AS after_1h
+     , (register_stamp::date - '1 month'::interval)::date AS before_30m
+  FROM mst_users_with_dates
+;
+
+
+/**
+ * 6.12. difference between two date values
+ */
+SELECT user_id
+     , CURRENT_DATE AS today
+     , register_stamp::date AS register_dt
+     , CURRENT_DATE - register_stamp::date AS diff_days
+  FROM mst_users_with_dates
+;
+
+SELECT user_id
+     , CURRENT_DATE AS today
+     , register_stamp::date AS register_date
+     , birth_date::date AS birth_date
+     , EXTRACT(YEAR FROM age(register_stamp::date, birth_date::date)) AS register_age
+  FROM mst_users_with_dates
+;
+
+
+/**
+ * 6.16. calculate the gap btw two date values which are string
+ */
+SELECT user_id
+     , SUBSTRING(register_stamp, 1, 10) AS register_date
+     , birth_date
+     , FLOOR(
+         (CAST(REPLACE(SUBSTRING(register_stamp, 1, 10), '-', '') AS integer) -
+         CAST(REPLACE(birth_date, '-', '') AS integer)) / 10000
+     ) AS register_age
+     , FLOOR(
+         (CAST(REPLACE(CAST(CURRENT_DATE AS text), '-', '') AS integer) -
+         CAST(REPLACE(birth_date, '-', '') AS integer)) / 10000
+     ) AS current_age
+  FROM mst_users_with_dates 
+;
+
+
+/**
+ * 6.17. handle IP by inet data type
+ */
+SELECT CAST('127.0.0.1' AS inet) < CAST('127.0.0.2' AS inet) AS lt
+     , CAST('127.0.0.1' AS inet) > CAST('127.0.0.2' AS inet) AS gt
+;
+
+/**
+ * 6.18. check whether IP is contained in IP range
+ */
+SELECT CAST('127.0.0.1' AS inet) << CAST('127.0.0.0/8' AS inet) AS is_conatained
+;
+
+/**
+ * 6.19. extract decimal from inet data
+ */
+SELECT ip
+     , CAST(split_part(ip, '.', 1) AS integer) AS ip_class_a
+     , CAST(split_part(ip, '.', 2) AS integer) AS ip_class_b
+     , CAST(split_part(ip, '.', 3) AS integer) AS ip_class_c
+     , CAST(split_part(ip, '.', 4) AS integer) AS ip_class_d
+  FROM
+    (SELECT CAST('192.168.0.1' AS text) AS ip) AS t
+    
+    
+/**
+ * 6.20. extract hex, oct from ip data
+ */
+SELECT ip
+     , CAST(split_part(ip, '.', 1) AS integer) * 2^24 AS ip_class_a
+     , CAST(split_part(ip, '.', 2) AS integer) * 2^16 AS ip_class_b
+     , CAST(split_part(ip, '.', 3) AS integer) * 2^8  AS ip_class_c
+     , CAST(split_part(ip, '.', 4) AS integer) * 2^0  AS ip_class_d
+  FROM
+    (SELECT CAST('192.168.0.1' AS text) AS ip) AS t
+;
+
+/**
+ * 3.20. pad 0 
+ */
+SELECT ip
+     , LPAD(SPLIT_PART(ip, '.', 1), 3, '0') AS ip_class_a
+     , LPAD(SPLIT_PART(ip, '.', 2), 3, '0') AS ip_class_b
+     , LPAD(SPLIT_PART(ip, '.', 3), 3, '0') AS ip_class_c
+     , LPAD(SPLIT_PART(ip, '.', 4), 3, '0') AS ip_class_d
+  FROM
+    (SELECT CAST('192.168.0.1' AS text) AS ip) AS t
+;
